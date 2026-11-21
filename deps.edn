@@ -1,10 +1,12 @@
-{:paths ["src" "test"]
- ;; babashka.fs walks the roots. sci stays undeclared by design (loader.md
- ;; §6.5): babashka bundles it, and the caller that mints contexts declares
- ;; the artifact. The :test alias adds it for the standalone suite on Jolt,
- ;; where the pod is not built in.
+{:paths ["src"]
+ ;; babashka.fs is the one runtime dependency: core.clj walks the roots.
+ ;; sci stays undeclared by design (loader.md §6.5) — babashka bundles it, and
+ ;; the caller that mints contexts declares the artifact. The :test alias adds
+ ;; it (and the test tree) for the standalone suite on Jolt, where it is not
+ ;; built in.
  :deps {babashka/fs {:mvn/version "0.5.34"}}
  :aliases
- {:test {:extra-deps
+ {:test {:extra-paths ["test"]
+         :extra-deps
          {org.babashka/sci {:git/url "https://github.com/yogthos/sci.git"
                             :git/sha "1295142fc29f206dd2747963548ba038077d9205"}}}}}
