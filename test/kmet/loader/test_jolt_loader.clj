@@ -6,14 +6,13 @@
    `jolt test` they exercise the native backend through the *portable*
    protocol: a dashed
    namespace loading from a root, a var request answered through a context's
-   namespace link, the host view the extension contract is built on, unload,
+   namespace link, a restricted host view, unload,
    and the ambient resource path extension code relies on."
   (:require [babashka.fs :as fs]
-            [kmet.test-tmp :as test-tmp]
+            [kmet.loader.test-tmp :as test-tmp]
             [clojure.java.io :as io]
             [clojure.string :as str]
             [clojure.test :as t :refer [deftest]]
-            [kmet.extension]
             [kmet.loader.core :as loader]))
 
 (defn- adapter
@@ -33,7 +32,7 @@
 
 (defn- dir!
   "A fresh directory for NAME under the test run's scratch root
-   (kmet.test-tmp), removed with the run."
+   (kmet.loader.test-tmp), removed with the run."
   [name]
   (test-tmp/temp-dir! (str "test-jolt-loader-" name "-")))
 
@@ -94,22 +93,22 @@
             (fs/delete-tree d)))))
     (t/is true "skipped: the adapter is Jolt-only")))
 
-(deftest adapter-host-view-is-the-extension-contract
+(deftest adapter-host-view-restricts-host-namespaces
   (if-let [{:keys [root host-view]} (adapter)]
-    (let [host (host-view (root) #{'kmet.extension 'kmet.libs})]
-      (t/is (identical? (ns-resolve 'kmet.extension 'register-tool!)
-                        (loader/load host {:kind :var :name "kmet.extension/register-tool!"}))
+    (let [host (host-view (root) #{'clojure.string})]
+      (t/is (identical? (ns-resolve 'clojure.string 'join)
+                        (loader/load host {:kind :var :name "clojure.string/join"}))
             "a shared host namespace comes back by reference")
-      (t/is (= [] (loader/find host {:kind :ns :name "kmet.app.commands"}))
-            "a name outside the contract is invisible")
+      (t/is (= [] (loader/find host {:kind :ns :name "example.private"}))
+            "a name outside the set is invisible")
       (t/is (= :loader/miss
-               (:type (ex-data (threw #(loader/load host {:kind :ns :name "kmet.app.commands"})))))
+               (:type (ex-data (threw #(loader/load host {:kind :ns :name "example.private"})))))
             "invisible means a miss, not a denial — a context's own roots get their turn")
       (t/is (str/includes? (str (ex-message (threw #(loader/find host {:kind :ns :name "kmet.loader.core"}))))
                            "host machinery")
             "the loader's own namespace is rejected with the actionable error")
       (t/is (some? (loader/load host {:kind :resource :name "kmet/loader/loader.md"}))
-            "resources pass through: the contract restricts namespaces, not the host's resources"))
+            "resources pass through: the view restricts namespaces, not the host's resources"))
     (t/is true "skipped: the adapter is Jolt-only")))
 
 (deftest adapter-unload-closes-the-loader

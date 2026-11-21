@@ -1,0 +1,18 @@
+{:paths ["src" "test"]
+ :tasks
+ {test {:doc "Run the loader suite"
+        :task (let [begin-run! (requiring-resolve 'kmet.loader.test-tmp/begin-run!)
+                    end-run! (requiring-resolve 'kmet.loader.test-tmp/end-run!)
+                    run-tests (requiring-resolve 'clojure.test/run-tests)]
+                (begin-run!)
+                (try
+                  (let [nss '[kmet.loader.test-core
+                              kmet.loader.test-sci-loader
+                              kmet.loader.test-self-contained
+                              kmet.loader.test-jolt-loader]]
+                    (doseq [ns-sym nss] (require ns-sym))
+                    (let [{:keys [fail error]} (apply run-tests nss)]
+                      (when (pos? (+ fail error))
+                        (System/exit 1))))
+                  (finally
+                    (end-run!))))}}}
